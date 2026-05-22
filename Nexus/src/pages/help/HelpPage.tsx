@@ -23,6 +23,8 @@ const faqs = [
   }
 ];
 
+const BACKEND_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace('/api', '');
+
 export const HelpPage: React.FC = () => {
   return (
     <div className="space-y-6 animate-fade-in">
@@ -55,6 +57,7 @@ export const HelpPage: React.FC = () => {
               variant="outline"
               className="mt-4"
               rightIcon={<ExternalLink size={16} />}
+              onClick={() => window.open(`${BACKEND_URL}/api-docs`, '_blank')}
             >
               View Docs
             </Button>

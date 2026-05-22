@@ -1,0 +1,1143 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Nexus Collaboration Platform API",
+    "description": "Backend API documentation for Nexus - Investor & Entrepreneur Collaboration Platform. Includes Authentication, Profiles, Meeting Scheduling, Document Chamber uploads, Canvas signing, and simulated Stripe payment wallet transfers.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Nexus Support Team"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5000/api",
+      "description": "Local Development Server"
+    }
+  ],
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "paths": {
+    "/auth/register": {
+      "post": {
+        "summary": "Register a new user (Entrepreneur or Investor)",
+        "description": "Create a new user account with specified role.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthRegisterRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error or email already in use"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Log in to an existing account",
+        "description": "Authenticate user credentials. If 2FA is enabled, triggers code emission in the console and returns `require2FA: true`.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthLoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful OR 2FA challenge triggered",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Auth2FAChallengeResponse"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid credentials or missing required fields"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/auth/verify-2fa": {
+      "post": {
+        "summary": "Verify 2FA OTP code",
+        "description": "Verifies the 2FA code printed to server console and issues a JWT token.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthVerify2FARequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "2FA Verification successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or expired OTP code"
+          },
+          "404": {
+            "description": "User not found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/auth/users": {
+      "get": {
+        "summary": "Get list of all users",
+        "description": "Retrieve directory profiles of all users on the platform.",
+        "responses": {
+          "200": {
+            "description": "List of users retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/User"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized token"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/auth/profile/{id}": {
+      "get": {
+        "summary": "Get user profile details",
+        "description": "Retrieve extensive profile details for a specific user ID.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "User ID to query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User profile details retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "User not found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "put": {
+        "summary": "Update user profile details",
+        "description": "Updates bio, startup/investment history, and preferences for current authenticated user. Email, role, password, and walletBalance are excluded from direct updates.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "User ID to update",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "bio": { "type": "string" },
+                  "startupName": { "type": "string" },
+                  "pitchSummary": { "type": "string" },
+                  "fundingNeeded": { "type": "string" },
+                  "industry": { "type": "string" },
+                  "location": { "type": "string" },
+                  "foundedYear": { "type": "number" },
+                  "teamSize": { "type": "number" },
+                  "investmentInterests": { "type": "array", "items": { "type": "string" } },
+                  "investmentStage": { "type": "array", "items": { "type": "string" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profile updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (unauthorized profile update)"
+          },
+          "404": {
+            "description": "User not found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/auth/toggle-2fa": {
+      "post": {
+        "summary": "Enable or disable 2FA",
+        "description": "Toggles two-factor authentication for the authenticated user's account.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["enable"],
+                "properties": {
+                  "enable": {
+                    "type": "boolean",
+                    "description": "Enable or disable status"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "2FA toggle updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "twoFactorEnabled": { "type": "boolean" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing required field enable"
+          },
+          "404": {
+            "description": "User not found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/auth/stats": {
+      "get": {
+        "summary": "Retrieve user dashboard stats",
+        "description": "Quick lookup of walletBalance and twoFactorEnabled status for the dashboard.",
+        "responses": {
+          "200": {
+            "description": "Dashboard stats retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "walletBalance": { "type": "number" },
+                    "twoFactorEnabled": { "type": "boolean" }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/meetings": {
+      "get": {
+        "summary": "Get list of user meetings",
+        "description": "Get all scheduled meetings where user is host or invitee, sorted chronologically.",
+        "responses": {
+          "200": {
+            "description": "List of meetings retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MeetingResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/meetings/schedule": {
+      "post": {
+        "summary": "Schedule a new meeting",
+        "description": "Creates a pending meeting. Checks for overlapping booking conflicts with already accepted meetings of either participant.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MeetingScheduleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Meeting successfully scheduled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Meeting"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Overlapping schedule conflict, invalid time range, or missing parameter"
+          },
+          "404": {
+            "description": "Invitee not found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/meetings/accept/{id}": {
+      "post": {
+        "summary": "Accept a meeting invitation",
+        "description": "Transitions meeting status to accepted. Only the invitee can execute this request. Also performs conflict checks.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Meeting ID to accept",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Meeting accepted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Meeting"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Conflict: overlapping meeting exists"
+          },
+          "403": {
+            "description": "Forbidden: Only the invitee can accept the meeting"
+          },
+          "404": {
+            "description": "Meeting not found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/meetings/reject/{id}": {
+      "post": {
+        "summary": "Reject a meeting invitation",
+        "description": "Transitions meeting status to rejected. Authorized to either participant.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Meeting ID to reject",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Meeting rejected successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Meeting"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Meeting not found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/meetings/cancel/{id}": {
+      "post": {
+        "summary": "Cancel an existing meeting",
+        "description": "Transitions meeting status to canceled. Authorized to either participant.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Meeting ID to cancel",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Meeting canceled successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Meeting"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Meeting not found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/documents": {
+      "get": {
+        "summary": "Get available documents",
+        "description": "Retrieves documents owned by current authenticated user or shared publicly on the platform.",
+        "responses": {
+          "200": {
+            "description": "List of documents retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DocumentResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/documents/upload": {
+      "post": {
+        "summary": "Upload a new document",
+        "description": "Upload a file (PDF, Spreadsheet, doc, etc.) and save it locally on the server under `/uploads`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "The file to upload (Max 15MB)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Document uploaded successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Document"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No file uploaded"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/documents/share/{id}": {
+      "post": {
+        "summary": "Toggle document sharing state",
+        "description": "Toggles shared state to allow other participants to view/sign this document.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Document ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["shared"],
+                "properties": {
+                  "shared": {
+                    "type": "boolean",
+                    "description": "Whether the document should be shared"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sharing state updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Document"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing shared parameter"
+          },
+          "403": {
+            "description": "Forbidden: Only owner can share"
+          },
+          "404": {
+            "description": "Document not found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/documents/sign/{id}": {
+      "post": {
+        "summary": "Submit e-signature for a document",
+        "description": "Stores base64 e-signature drawing path or data URL and flags document status as signed.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Document ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["signatureImage"],
+                "properties": {
+                  "signatureImage": {
+                    "type": "string",
+                    "description": "HTML5 Canvas base64 drawing data URL representation of signature"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Document signed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Document"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing signatureImage parameter"
+          },
+          "403": {
+            "description": "Forbidden: user cannot access/sign this document"
+          },
+          "404": {
+            "description": "Document not found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/documents/{id}": {
+      "delete": {
+        "summary": "Delete a document",
+        "description": "Removes document metadata from DB and deletes original file from disk uploads directory.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Document ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: Only owner can delete"
+          },
+          "404": {
+            "description": "Document not found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/payments/deposit": {
+      "post": {
+        "summary": "Deposit funds into wallet",
+        "description": "Simulates Stripe checkout and deposits a virtual dollar amount into the user's wallet.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["amount"],
+                "properties": {
+                  "amount": {
+                    "type": "number",
+                    "description": "Amount to deposit (must be greater than 0)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Deposit successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalletBalanceResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid deposit amount"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/payments/withdraw": {
+      "post": {
+        "summary": "Withdraw funds from wallet",
+        "description": "Deductions from simulated wallet balance to linked bank account.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["amount"],
+                "properties": {
+                  "amount": {
+                    "type": "number",
+                    "description": "Amount to withdraw"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Withdrawal successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalletBalanceResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Insufficient wallet balance or invalid amount"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/payments/transfer": {
+      "post": {
+        "summary": "Transfer funds to another user",
+        "description": "Direct peer-to-peer wallet transaction. Debits the sender's balance and credits the recipient's balance.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["recipientId", "amount"],
+                "properties": {
+                  "recipientId": {
+                    "type": "string",
+                    "description": "Target user ID"
+                  },
+                  "amount": {
+                    "type": "number",
+                    "description": "Amount to transfer"
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "Optional transfer notes"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Transfer executed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalletBalanceResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Insufficient funds, transferring to self, or invalid request parameters"
+          },
+          "404": {
+            "description": "Sender or recipient user not found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/payments/transactions": {
+      "get": {
+        "summary": "Get wallet ledger transactions",
+        "description": "Retrieve transaction history entries involving the authenticated user.",
+        "responses": {
+          "200": {
+            "description": "Transaction list retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TransactionResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "550": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "email": { "type": "string" },
+          "role": { "type": "string", "enum": ["entrepreneur", "investor"] },
+          "avatarUrl": { "type": "string" },
+          "bio": { "type": "string" },
+          "isOnline": { "type": "boolean" },
+          "twoFactorEnabled": { "type": "boolean" },
+          "walletBalance": { "type": "number" },
+          "startupName": { "type": "string" },
+          "pitchSummary": { "type": "string" },
+          "fundingNeeded": { "type": "string" },
+          "industry": { "type": "string" },
+          "location": { "type": "string" },
+          "foundedYear": { "type": "number" },
+          "teamSize": { "type": "number" },
+          "investmentInterests": { "type": "array", "items": { "type": "string" } },
+          "investmentStage": { "type": "array", "items": { "type": "string" } },
+          "portfolioCompanies": { "type": "array", "items": { "type": "string" } },
+          "totalInvestments": { "type": "number" },
+          "minimumInvestment": { "type": "string" },
+          "maximumInvestment": { "type": "string" }
+        }
+      },
+      "AuthRegisterRequest": {
+        "type": "object",
+        "required": ["name", "email", "password", "role"],
+        "properties": {
+          "name": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "password": { "type": "string" },
+          "role": { "type": "string", "enum": ["entrepreneur", "investor"] }
+        }
+      },
+      "AuthLoginRequest": {
+        "type": "object",
+        "required": ["email", "password", "role"],
+        "properties": {
+          "email": { "type": "string", "format": "email" },
+          "password": { "type": "string" },
+          "role": { "type": "string", "enum": ["entrepreneur", "investor"] }
+        }
+      },
+      "AuthVerify2FARequest": {
+        "type": "object",
+        "required": ["userId", "code"],
+        "properties": {
+          "userId": { "type": "string" },
+          "code": { "type": "string", "description": "OTP digits" }
+        }
+      },
+      "AuthResponse": {
+        "type": "object",
+        "properties": {
+          "token": { "type": "string", "description": "JWT session token" },
+          "user": { "$ref": "#/components/schemas/User" }
+        }
+      },
+      "Auth2FAChallengeResponse": {
+        "type": "object",
+        "properties": {
+          "require2FA": { "type": "boolean", "example": true },
+          "userId": { "type": "string" },
+          "email": { "type": "string" }
+        }
+      },
+      "Meeting": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "hostId": { "type": "string" },
+          "inviteeId": { "type": "string" },
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "startTime": { "type": "string", "format": "date-time" },
+          "endTime": { "type": "string", "format": "date-time" },
+          "status": { "type": "string", "enum": ["pending", "accepted", "rejected", "canceled"] }
+        }
+      },
+      "MeetingScheduleRequest": {
+        "type": "object",
+        "required": ["inviteeId", "title", "startTime", "endTime"],
+        "properties": {
+          "inviteeId": { "type": "string" },
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "startTime": { "type": "string", "format": "date-time" },
+          "endTime": { "type": "string", "format": "date-time" }
+        }
+      },
+      "MeetingResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "hostId": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "email": { "type": "string" },
+              "avatarUrl": { "type": "string" },
+              "role": { "type": "string" }
+            }
+          },
+          "inviteeId": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "email": { "type": "string" },
+              "avatarUrl": { "type": "string" },
+              "role": { "type": "string" }
+            }
+          },
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "startTime": { "type": "string", "format": "date-time" },
+          "endTime": { "type": "string", "format": "date-time" },
+          "status": { "type": "string" }
+        }
+      },
+      "Document": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "type": { "type": "string" },
+          "size": { "type": "string" },
+          "url": { "type": "string" },
+          "ownerId": { "type": "string" },
+          "shared": { "type": "boolean" },
+          "status": { "type": "string", "enum": ["uploaded", "signed"] },
+          "signatureImage": { "type": "string" },
+          "signedById": { "type": "string" },
+          "signedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "DocumentResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "type": { "type": "string" },
+          "size": { "type": "string" },
+          "url": { "type": "string" },
+          "ownerId": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "email": { "type": "string" },
+              "avatarUrl": { "type": "string" },
+              "role": { "type": "string" }
+            }
+          },
+          "shared": { "type": "boolean" },
+          "status": { "type": "string" },
+          "signatureImage": { "type": "string" },
+          "signedById": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "email": { "type": "string" },
+              "avatarUrl": { "type": "string" },
+              "role": { "type": "string" }
+            }
+          },
+          "signedAt": { "type": "string", "format": "date-time" },
+          "lastModified": { "type": "string" }
+        }
+      },
+      "TransactionResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "userId": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "email": { "type": "string" },
+              "avatarUrl": { "type": "string" },
+              "role": { "type": "string" }
+            }
+          },
+          "recipientId": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "email": { "type": "string" },
+              "avatarUrl": { "type": "string" },
+              "role": { "type": "string" }
+            }
+          },
+          "type": { "type": "string", "enum": ["deposit", "withdraw", "transfer"] },
+          "amount": { "type": "number" },
+          "status": { "type": "string" },
+          "description": { "type": "string" },
+          "timestamp": { "type": "string", "format": "date-time" }
+        }
+      },
+      "WalletBalanceResponse": {
+        "type": "object",
+        "properties": {
+          "balance": { "type": "number" },
+          "transaction": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "userId": { "type": "string" },
+              "type": { "type": "string" },
+              "amount": { "type": "number" },
+              "status": { "type": "string" },
+              "description": { "type": "string" },
+              "timestamp": { "type": "string", "format": "date-time" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

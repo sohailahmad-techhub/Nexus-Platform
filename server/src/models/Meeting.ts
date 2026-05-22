@@ -27,7 +27,7 @@ const MeetingSchema: Schema = new Schema({
 MeetingSchema.set('toJSON', {
   virtuals: true,
   versionKey: false,
-  transform: function (doc, ret) {
+  transform: function (doc, ret: any) {
     ret.id = ret._id.toString();
     ret.hostId = ret.hostId.toString();
     ret.inviteeId = ret.inviteeId.toString();

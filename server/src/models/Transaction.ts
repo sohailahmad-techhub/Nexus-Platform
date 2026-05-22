@@ -24,7 +24,7 @@ const TransactionSchema: Schema = new Schema({
 TransactionSchema.set('toJSON', {
   virtuals: true,
   versionKey: false,
-  transform: function (doc, ret) {
+  transform: function (doc, ret: any) {
     ret.id = ret._id.toString();
     ret.userId = ret.userId.toString();
     if (ret.recipientId) ret.recipientId = ret.recipientId.toString();

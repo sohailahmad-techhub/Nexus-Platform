@@ -33,6 +33,11 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Serve static uploaded files
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
+// Swagger API Documentation
+import swaggerUi from 'swagger-ui-express';
+import swaggerDocument from './config/swagger.json';
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/meetings', meetingRoutes);

@@ -33,7 +33,7 @@ const DocumentSchema: Schema = new Schema({
 DocumentSchema.set('toJSON', {
   virtuals: true,
   versionKey: false,
-  transform: function (doc, ret) {
+  transform: function (doc, ret: any) {
     ret.id = ret._id.toString();
     ret.ownerId = ret.ownerId.toString();
     if (ret.signedById) ret.signedById = ret.signedById.toString();
